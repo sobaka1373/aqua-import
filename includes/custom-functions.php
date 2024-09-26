@@ -22,10 +22,13 @@ function admin_page_open(): void
 function get_data_from_db(): array
 {
     global $wpdb;
-    $sql = "SELECT * FROM jos_content WHERE sectionid <> 0 AND sectionid <> 1
-    AND sectionid <> 2 AND sectionid <> 8 AND sectionid <> 9 AND sectionid <> 11 AND sectionid <> 12
-    AND sectionid <> 14 AND sectionid <> 17 AND sectionid <> 19 AND sectionid <> 36;";
-//    $sql = "SELECT * FROM jos_content WHERE CONVERT(`title` USING utf8mb4) = 'Студенти Рівненського інституту Київського університету права НАН України провели акцію присвячену Дню боротьби зі СНІДом.' LIMIT 50";
+    $sql = "SELECT * 
+      FROM qkfup_content 
+      WHERE (catid IN (10, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 42, 43, 44, 45, 46, 48, 49, 50, 51, 52, 53, 54, 55))
+      AND id NOT IN (744, 911, 1290, 1441, 2632, 254, 624, 916, 1001, 1020)
+      AND language != '*' 
+      LIMIT 5;";
+//    $sql = "SELECT * FROM qkfup_content LIMIT 1;";
     return $wpdb->get_results($sql);
 }
 
@@ -262,4 +265,138 @@ function check_posts_consist_meta(): void
 	} else {
 		echo 2;
 	}
+}
+
+function setCategory($post_id, $cat_id)
+{
+    global $wpdb;
+    $wpdb->insert(
+        $wpdb->term_relationships,
+        array(
+            'object_id' => $post_id,
+            'term_taxonomy_id' => $cat_id,
+            'term_order' => '0'
+        )
+    );
+}
+
+function categoryTable($cat_id)
+{
+    switch ($cat_id) {
+        case 20:
+            $new_cat_id = 31;
+            break;
+        case 21:
+            $new_cat_id = 32;
+            break;
+        case 22:
+            $new_cat_id = 33;
+            break;
+        case 23:
+            $new_cat_id = 34;
+            break;
+        case 24:
+            $new_cat_id = 35;
+            break;
+        case 25:
+            $new_cat_id = 36;
+            break;
+        case 26:
+            $new_cat_id = 37;
+            break;
+        case 27:
+            $new_cat_id = 38;
+            break;
+        case 28:
+            $new_cat_id = 39;
+            break;
+        case 29:
+            $new_cat_id = 40;
+            break;
+        default:
+            $new_cat_id = 0;
+            break;
+    }
+
+    return $new_cat_id;
+}
+
+function setMetaDescription($post_id, $lang, $post_type, $post_title)
+{
+  $metaBlogUk = "<title> - Блог</title><meta content='" . $post_title ." бурова компанія ⭐Акваторія⭐ ✅ Понад 15 років досвіду. Телефонуйте: (097)-700-10-10'>";
+  $metaBlogRu = "<title>" . $post_title ." - Блог</title><meta name='description' content='" . $post_title ." буровая компания ⭐Акватория⭐ ✅ Более 15 лет опыта. Звоните: (097)-700-10-10'>";
+  $metaPortfolioUk ="<title>" . $post_title ." - Портфоліо компанії Акваторія</title><meta  content='Портфоліо компанії Акваторія ✅ " . $post_title ." ✅ Понад 15 років досвіду. Телефонуйте: (097)-700-10-10'>";
+  $metaPortfolioRu = "<title>" . $post_title ." - Портфолио компании Акватория</title><meta name='description' content='Портфолио компании Акватория ✅ " . $post_title ." ✅ Более 15 лет опыта. Звоните: (097)-700-10-10'>";
+
+  if ($lang === 'ru') {
+    if ($post_type === 'post') {
+        update_post_meta( $post_id, '_yoast_wpseo_metadesc', $metaBlogRu);
+    } elseif ($post_type === 'portfolio') {
+        update_post_meta( $post_id, '_yoast_wpseo_metadesc', $metaPortfolioRu);
+    }
+  } elseif ($lang === 'uk') {
+      if ($post_type === 'post') {
+          update_post_meta( $post_id, '_yoast_wpseo_metadesc', $metaBlogUk);
+      } elseif ($post_type === 'portfolio') {
+          update_post_meta( $post_id, '_yoast_wpseo_metadesc', $metaPortfolioUk);
+      }
+  }
+}
+
+function setRussianTranslation($post_id)
+{
+    $type = get_post_type( $post_id );
+    $trid = apply_filters( 'wpml_element_trid', NULL, $post_id, 'post_' . $type );
+    $language_code = 'ru';
+    $language_args = [
+        'element_id' => $post_id,
+        'element_type' => 'post_'.$type,
+        'trid' => $trid,
+        'language_code' => $language_code,
+        'source_language_code' => null,
+    ];
+
+    do_action( 'wpml_set_element_language_details', $language_args );
+}
+
+function setAcfBannerData($post_id, $image, $title, $description)
+{
+//    $post_image = json_decode($image);
+//    $post_image =  home_url() . "/" . $post_image->image_intro;
+
+    $block_banner_fields = [
+        'title' => $title,
+        'desc' => $description,
+//        'image' => $post_image,
+    ];
+
+    update_field('block_banner', $block_banner_fields, $post_id);
+}
+
+function setAcfPortfolioData($post_id, $joomla_id)
+{
+    global $wpdb;
+    $sql = "SELECT 
+    fv.item_id, 
+    f.name AS category_name, 
+    fv.value
+    FROM 
+    qkfup_fields_values fv
+    JOIN 
+    qkfup_fields f ON fv.field_id = f.id
+    WHERE 
+    fv.item_id = $joomla_id";
+    $fields = $wpdb->get_results($sql);
+
+    $portfolio_fields = [];
+    foreach ($fields as $field) {
+        if ($field->category_name === 'gorod' || $field->category_name === 'galereya') {
+            continue;
+        } elseif ($field->category_name === 'lokatsiya') {
+            $portfolio_fields['city'] = $field->value;
+        } else {
+            $portfolio_fields[$field->category_name] = $field->value;
+        }
+    }
+    update_field('portfolio_single_fields', $portfolio_fields, $post_id);
 }
